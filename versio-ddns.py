@@ -3,6 +3,7 @@ import urllib
 import httplib
 import argparse
 import mechanize
+import ConfigParser
 
 from bs4 import BeautifulSoup
 from mechanize._opener import urlopen
@@ -104,11 +105,13 @@ def main(argv):
         host = args.host
 
         if args.config:
-            config = configparser.RawConfigParser()
+            config = ConfigParser.RawConfigParser()
             with open(args.config) as fp:
                 config.readfp(fp)
-            for key, value in config.items('versio-ddns'):
-                setattr(options, key, value)
+
+            username = config.get('versio-ddns', 'username')
+            password = config.get('versio-ddns', 'password')
+            host = config.get('versio-ddns', 'host')
 
         if not username or not password or not host:
             parser.print_usage()
