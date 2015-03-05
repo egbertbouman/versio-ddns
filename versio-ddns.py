@@ -11,6 +11,7 @@ from mechanize._form import ParseResponse
 
 GET_IP_URL = 'http://ipv4.icanhazip.com'
 
+VERSIO_URL_HOME = 'https://www.secure.versio.nl/customer'
 VERSIO_URL_LOGIN = 'https://www.secure.versio.nl/login'
 VERSIO_URL_DOMAINS = 'https://www.secure.versio.nl/c-domains'
 VERSIO_URL_MANAGEDNS = 'https://www.secure.versio.nl/c-dmanagedns?id={domain_id}'
@@ -22,10 +23,19 @@ def get_ip():
     except:
         pass
 
+def login_required(func):
+   def wrap(*args, **kwargs):
+       if getattr(args[0], 'logged_in'):
+           return func(*args, **kwargs)
+       else:
+           raise Exception('You need to be logged in to execute ' + func.__name__)
+   return wrap
+
 
 class ManageVersioDNS(object):
 
     def __init__(self):
+        self.logged_in = False
         self.browser = mechanize.Browser()
         self.browser.set_handle_robots(False)
 
@@ -36,16 +46,18 @@ class ManageVersioDNS(object):
         self.browser.form['password'] = password
         response = self.browser.submit()
         response_url = response.geturl()
+        self.logged_in = response_url == VERSIO_URL_HOME
+        return self.logged_in
 
+    @login_required
     def get_domains(self):
-        # TODO: check if logged in
         response = self.browser.open(VERSIO_URL_DOMAINS)
         soup = BeautifulSoup(response.read())
         return {domain.get('id'): domain.a.get('href')[13:]
                 for domain in soup.find_all(attrs={'class': 'domain'})}
 
+    @login_required
     def get_records(self, domain_id):
-        # TODO: check if logged in
         records = []
         self.browser.open(VERSIO_URL_MANAGEDNS.format(domain_id=domain_id))
         self.browser.select_form(predicate=lambda f: f.attrs.get('id', None) == 'update_records_form')
@@ -57,8 +69,8 @@ class ManageVersioDNS(object):
             records.append((text, type, value))
         return records
 
+    @login_required
     def add_record(self, domain_id, text, type, value):
-        # TODO: check if logged in
         self.browser.open(VERSIO_URL_MANAGEDNS.format(domain_id=domain_id))
         self.browser.select_form(predicate=lambda f: f.attrs.get('id', None) == 'add_record_form')
         self.browser.form['name'] = text
@@ -67,8 +79,8 @@ class ManageVersioDNS(object):
         self.browser.form['ttl'] = ['14400']
         response = self.browser.submit()
 
+    @login_required
     def update_record(self, domain_id, text, type, value):
-        # TODO: check if logged in
         self.browser.open(VERSIO_URL_MANAGEDNS.format(domain_id=domain_id))
         self.browser.select_form(predicate=lambda f: f.attrs.get('id', None) == 'update_records_form')
         indices = [i for i, c in enumerate(self.browser.form.controls) if c.name == 'name[]']
@@ -87,7 +99,7 @@ class ManageVersioDNS(object):
 
 def main(argv):
     parser = argparse.ArgumentParser(add_help=False, description=('Dynamic DNS update script for domains registered with Versio'))
-    parser.add_argument('--help', action='help', default=argparse.SUPPRESS, help='show this help message and exit')
+    parser.add_argument('--help', action='help', default=argparse.SUPPRESS, help='Show this help message and exit')
 
     group1 = parser.add_argument_group(title='File-based configuration')
     group1.add_argument('--config', '-c', help='Read configuration from file')
