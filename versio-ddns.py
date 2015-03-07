@@ -6,8 +6,6 @@ import mechanize
 import ConfigParser
 
 from bs4 import BeautifulSoup
-from mechanize._opener import urlopen
-from mechanize._form import ParseResponse
 
 GET_IP_URL = 'http://ipv4.icanhazip.com'
 
