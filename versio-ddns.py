@@ -19,7 +19,7 @@ def get_ip():
     try:
         return urllib.urlopen(GET_IP_URL).read().strip()
     except:
-        pass
+        raise Exception('Couldn\'t get external IP')
 
 def login_required(func):
    def wrap(*args, **kwargs):
@@ -62,34 +62,34 @@ class ManageVersioDNS(object):
         indices = [i for i, c in enumerate(self.browser.form.controls) if c.name == 'name[]']
         for index in indices:
             text = self.browser.form.controls[index].value
-            type = self.browser.form.controls[index+1].value[0]
+            rtype = self.browser.form.controls[index+1].value[0]
             value  = self.browser.form.controls[index+2].value
-            records.append((text, type, value))
+            records.append((text, rtype, value))
         return records
 
     @login_required
-    def add_record(self, domain_id, text, type, value):
+    def add_record(self, domain_id, text, rtype, value):
         self.browser.open(VERSIO_URL_MANAGEDNS.format(domain_id=domain_id))
         self.browser.select_form(predicate=lambda f: f.attrs.get('id', None) == 'add_record_form')
         self.browser.form['name'] = text
-        self.browser.form['type'] = [type]
+        self.browser.form['type'] = [rtype]
         self.browser.form['value'] = value
         self.browser.form['ttl'] = ['14400']
-        response = self.browser.submit()
+        self.browser.submit()
 
     @login_required
-    def update_record(self, domain_id, text, type, value):
+    def update_record(self, domain_id, text, rtype, value):
         self.browser.open(VERSIO_URL_MANAGEDNS.format(domain_id=domain_id))
         self.browser.select_form(predicate=lambda f: f.attrs.get('id', None) == 'update_records_form')
         indices = [i for i, c in enumerate(self.browser.form.controls) if c.name == 'name[]']
         for index in indices:
             cur_text = self.browser.form.controls[index].value
-            cur_type = self.browser.form.controls[index+1].value[0]
+            cur_rtype = self.browser.form.controls[index+1].value[0]
             cur_value  = self.browser.form.controls[index+2].value
-            if cur_text == text and cur_type == type:
+            if cur_text == text and cur_rtype == rtype:
                 if cur_value != value:
                     self.browser.form.controls[index+2].value = value
-                    response = self.browser.submit()
+                    self.browser.submit()
                     return 1
                 return 0
         return -1
