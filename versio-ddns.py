@@ -114,6 +114,7 @@ def main(argv):
         username = args.username
         password = args.password
         host = args.host
+        prev_ip = None
 
         if args.config:
             config = ConfigParser.RawConfigParser()
@@ -123,6 +124,7 @@ def main(argv):
             username = config.get('versio-ddns', 'username')
             password = config.get('versio-ddns', 'password')
             host = config.get('versio-ddns', 'host')
+            prev_ip = config.has_option('versio-ddns','prev_ip') and config.get('versio-ddns','prev_ip') or None
 
         if not username or not password or not host:
             parser.print_usage()
@@ -130,6 +132,10 @@ def main(argv):
 
         ip = get_ip()
         print 'Current IP is', ip
+
+        if prev_ip and prev_ip == ip:
+            print 'IP hasn\'t changed since the last run, exiting'
+            sys.exit(0)
 
         versio = ManageVersioDNS()
         versio.login(username, password)
@@ -154,6 +160,11 @@ def main(argv):
         else:
             versio.add_record(domain_id, host, 'A', ip)
             print 'Created DNS record %s(A) = %s' % (host, ip)
+
+        if args.config:
+            config.set('versio-ddns', 'prev_ip', ip)
+            with open(args.config, 'wb') as fp:
+                config.write(fp)
 
     except Exception, e:
         print 'Error:', str(e)
